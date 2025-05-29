@@ -22,7 +22,7 @@ defmodule Server do
 
   defp accept(socket) do
     {:ok, client} = :gen_tcp.accept(socket)
-    read(client)
+    Task.start_link(fn -> read(client) end)
 
     accept(socket)
   end
