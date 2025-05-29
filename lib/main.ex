@@ -22,11 +22,24 @@ defmodule Server do
 
   defp accept(socket) do
     {:ok, client} = :gen_tcp.accept(socket)
-
-    {:ok, _data} = :gen_tcp.recv(client, 0)
-    :gen_tcp.send(client, "+PONG\r\n")
+    read(client)
 
     accept(socket)
+  end
+
+  defp read(client) do
+    case :gen_tcp.recv(client, 0) do
+      {:ok, _data} ->
+        handle_request(client)
+
+      {:error, :closed} ->
+        nil
+    end
+  end
+
+  defp handle_request(client) do
+    :gen_tcp.send(client, "+PONG\r\n")
+    read(client)
   end
 end
 
