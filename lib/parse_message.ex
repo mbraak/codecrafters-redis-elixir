@@ -7,8 +7,6 @@ defmodule ParseMessage do
     result
   end
 
-  # defp parse_lines([]), do: {nil, []}
-
   defp parse_lines([line | rest_lines]) do
     {first_char, rest_first_line} = String.split_at(line, 1)
 
@@ -27,19 +25,25 @@ defmodule ParseMessage do
   end
 
   # Array
-  defp parse_lines("*", rest_first_line, initial_rest_lines) do
+  defp parse_lines("*", rest_first_line, rest_lines) do
     count = String.to_integer(rest_first_line)
 
-    {result, result_rest_lines} =
-      Enum.reduce(
-        1..count,
-        {[], initial_rest_lines},
-        fn _, {result, rest_lines} ->
-          {value, rest_lines} = parse_lines(rest_lines)
-          {[value | result], rest_lines}
-        end
-      )
+    {result, rest_lines} = parse_array(count, [], rest_lines)
 
-    {Enum.reverse(result), result_rest_lines}
+    {Enum.reverse(result), rest_lines}
+  end
+
+  defp parse_array(0, result_array, lines) do
+    {result_array, lines}
+  end
+
+  defp parse_array(count, result_array, lines) do
+    {value, lines} = parse_lines(lines)
+
+    parse_array(
+      count - 1,
+      [value | result_array],
+      lines
+    )
   end
 end
