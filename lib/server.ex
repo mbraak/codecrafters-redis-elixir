@@ -1,8 +1,4 @@
 defmodule Server do
-  @moduledoc """
-  Your implementation of a Redis server
-  """
-
   use Application
 
   def start(_type, _args) do

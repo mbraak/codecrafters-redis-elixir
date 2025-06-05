@@ -5,7 +5,8 @@ defmodule Client do
 
   defp run_loop(client_socket) do
     case :gen_tcp.recv(client_socket, 0) do
-      {:ok, _data} ->
+      {:ok, data} ->
+        ParseMessage.parse(data)
         handle_request(client_socket)
 
       {:error, :closed} ->
