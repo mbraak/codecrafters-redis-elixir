@@ -2,7 +2,7 @@ defmodule Server do
   use Application
 
   def start(_type, _args) do
-    Supervisor.start_link([{Task, fn -> Server.listen() end}], strategy: :one_for_one)
+    Supervisor.start_link([{Task, &Server.listen/0}], strategy: :one_for_one)
   end
 
   @doc """
