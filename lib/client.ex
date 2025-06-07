@@ -33,21 +33,11 @@ defmodule Client do
     )
   end
 
-  defp handle_request(command, params, client_socket) do
-    case command do
-      "ping" ->
-        ping(params, client_socket)
-
-      "echo" ->
-        echo(params, client_socket)
-    end
-  end
-
-  defp ping([], client_socket) do
+  defp handle_request("ping", [], client_socket) do
     :gen_tcp.send(client_socket, EncodeResp.basic_string("PONG"))
   end
 
-  defp echo([value], client_socket) do
+  defp handle_request("echo", [value], client_socket) do
     :gen_tcp.send(
       client_socket,
       EncodeResp.bulk_string(value)
