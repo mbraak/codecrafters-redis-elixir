@@ -44,12 +44,13 @@ defmodule Client do
   end
 
   defp ping([], client_socket) do
-    :gen_tcp.send(client_socket, "+PONG\r\n")
+    :gen_tcp.send(client_socket, EncodeResp.basic_string("PONG"))
   end
 
-  defp echo([message], client_socket) do
-    length = String.length(message)
-
-    :gen_tcp.send(client_socket, "$#{length}\r\n#{message}\r\n")
+  defp echo([value], client_socket) do
+    :gen_tcp.send(
+      client_socket,
+      EncodeResp.bulk_string(value)
+    )
   end
 end
