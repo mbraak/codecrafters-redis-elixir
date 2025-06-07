@@ -1,4 +1,4 @@
-defmodule ParseMessage do
+defmodule ParseResp do
   def parse(""), do: nil
   def parse(nil), do: nil
 

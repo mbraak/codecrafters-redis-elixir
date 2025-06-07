@@ -8,7 +8,7 @@ defmodule Client do
       {:ok, data} ->
         try do
           handle_request(
-            ParseMessage.parse(data),
+            ParseResp.parse(data),
             client_socket
           )
         rescue
