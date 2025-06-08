@@ -43,4 +43,26 @@ defmodule Client do
       EncodeResp.bulk_string(value)
     )
   end
+
+  defp handle_request("get", [key], client_socket) do
+    value = Store.get(key)
+
+    response_data =
+      if is_nil(value) do
+        EncodeResp.null_bulk_string()
+      else
+        EncodeResp.bulk_string(value)
+      end
+
+    :gen_tcp.send(client_socket, response_data)
+  end
+
+  defp handle_request("set", [key, value], client_socket) do
+    Store.put(key, value)
+
+    :gen_tcp.send(
+      client_socket,
+      EncodeResp.basic_string("OK")
+    )
+  end
 end
