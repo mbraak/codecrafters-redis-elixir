@@ -65,4 +65,14 @@ defmodule Client do
       EncodeResp.basic_string("OK")
     )
   end
+
+  defp handle_request("set", [key, value, "px", expiry_ms_string], client_socket) do
+    expiry_ms = String.to_integer(expiry_ms_string)
+    Store.put_with_expiry(key, value, expiry_ms)
+
+    :gen_tcp.send(
+      client_socket,
+      EncodeResp.basic_string("OK")
+    )
+  end
 end
