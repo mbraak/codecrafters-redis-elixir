@@ -91,7 +91,10 @@ defmodule Client do
       if is_nil(value) do
         EncodeResp.null_bulk_string()
       else
-        EncodeResp.bulk_string(value)
+        EncodeResp.array([
+          EncodeResp.bulk_string(key),
+          EncodeResp.bulk_string(value)
+        ])
       end
 
     :gen_tcp.send(client_socket, message)
