@@ -2,8 +2,12 @@ defmodule Server do
   use Application
 
   def start(_type, _args) do
+    args = System.argv()
+    {options, _, _} = OptionParser.parse(args, strict: [dir: :string, dbfilename: :string])
+
     children = [
-      Store,
+      Server.Store,
+      {Server.Config, options},
       {Task, &Server.listen/0}
     ]
 

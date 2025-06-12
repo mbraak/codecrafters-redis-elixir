@@ -1,4 +1,4 @@
-defmodule Store do
+defmodule Server.Store do
   use GenServer
 
   @impl GenServer

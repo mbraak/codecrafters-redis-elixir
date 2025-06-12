@@ -33,8 +33,12 @@ defmodule Client do
     )
   end
 
-  defp handle_request("ping", [], client_socket) do
-    :gen_tcp.send(client_socket, EncodeResp.basic_string("PONG"))
+  defp handle_request("config", [config_command, key], client_socket) do
+    hand_config_command(
+      String.downcase(config_command),
+      key,
+      client_socket
+    )
   end
 
   defp handle_request("echo", [value], client_socket) do
@@ -45,7 +49,7 @@ defmodule Client do
   end
 
   defp handle_request("get", [key], client_socket) do
-    value = Store.get(key)
+    value = Server.Store.get(key)
 
     response_data =
       if is_nil(value) do
@@ -57,8 +61,12 @@ defmodule Client do
     :gen_tcp.send(client_socket, response_data)
   end
 
+  defp handle_request("ping", [], client_socket) do
+    :gen_tcp.send(client_socket, EncodeResp.basic_string("PONG"))
+  end
+
   defp handle_request("set", [key, value], client_socket) do
-    Store.put(key, value)
+    Server.Store.put(key, value)
 
     :gen_tcp.send(
       client_socket,
@@ -68,11 +76,24 @@ defmodule Client do
 
   defp handle_request("set", [key, value, "px", expiry_ms_string], client_socket) do
     expiry_ms = String.to_integer(expiry_ms_string)
-    Store.put_with_expiry(key, value, expiry_ms)
+    Server.Store.put_with_expiry(key, value, expiry_ms)
 
     :gen_tcp.send(
       client_socket,
       EncodeResp.basic_string("OK")
     )
+  end
+
+  defp hand_config_command("get", key, client_socket) do
+    value = Server.Config.get(key)
+
+    message =
+      if is_nil(value) do
+        EncodeResp.null_bulk_string()
+      else
+        EncodeResp.bulk_string(value)
+      end
+
+    :gen_tcp.send(client_socket, message)
   end
 end
