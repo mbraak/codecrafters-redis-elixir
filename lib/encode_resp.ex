@@ -11,4 +11,12 @@ defmodule EncodeResp do
   def null_bulk_string do
     "$-1\r\n"
   end
+
+  def array(values) do
+    count = Enum.count(values)
+    count_string = "*#{count}\r\n"
+    values_string = Enum.join(values)
+
+    "#{count_string}#{values_string}"
+  end
 end
