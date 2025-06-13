@@ -2,8 +2,9 @@ defmodule Rdb do
   def read(path) do
     {:ok, io_device} = File.open(path)
     _header = IO.binread(io_device, 9)
-    read_sections(io_device)
+    map = read_sections(io_device)
     File.close(io_device)
+    map
   end
 
   defp read_sections(io_device) do
@@ -30,7 +31,7 @@ defmodule Rdb do
     <<length>> = IO.binread(io_device, 1)
 
     case length do
-      0xC0 -> IO.binread(io_device, 1)
+      0xC0 -> read_byte(io_device)
       0xC1 -> IO.binread(io_device, 2)
       0xC2 -> IO.binread(io_device, 4)
       _ -> IO.binread(io_device, length)
@@ -46,16 +47,21 @@ defmodule Rdb do
     <<_expirations_size>> = IO.binread(io_device, 1)
     <<_value_type>> = IO.binread(io_device, 1)
 
-    Enum.each(
-      1..hash_table_size,
-      fn _ ->
-        _key = read_string(io_device)
-        _value = read_string(io_device)
-      end
-    )
+    1..hash_table_size
+    |> Enum.map(fn _ ->
+      key = read_string(io_device)
+      value = read_string(io_device)
+      {key, value}
+    end)
+    |> Map.new()
   end
 
   defp read_checksum(io_device) do
     _checksum = IO.binread(io_device, 8)
+  end
+
+  defp read_byte(io_device) do
+    <<value>> = IO.binread(io_device, 1)
+    value
   end
 end
