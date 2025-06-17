@@ -39,6 +39,19 @@ defmodule ParseRdb do
     parse(rest, [entry | entries])
   end
 
+  defp parse(
+         <<0xFC, _expiration_time::little-unsigned-integer-size(64), _datatype::size(8),
+           rest::binary>>,
+         entries
+       ) do
+    {key, rest} = parse_value(rest)
+    {value, rest} = parse_value(rest)
+
+    # TODO: _expiration_time
+    entry = {:entry, {key, value}}
+    parse(rest, [entry | entries])
+  end
+
   # Database index
   defp parse(<<0xFE, database_id::size(8), rest::binary>>, entries) do
     parse(rest, [{:database_id, database_id} | entries])

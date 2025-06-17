@@ -2,6 +2,7 @@ defmodule ParseRdbTest do
   use ExUnit.Case, async: true
 
   test "read rdb file" do
-    _entries = ParseRdb.read("test/files/dump.rdb")
+    entries = ParseRdb.read("test/files/dump.rdb")
+    IO.inspect(entries)
   end
 end
