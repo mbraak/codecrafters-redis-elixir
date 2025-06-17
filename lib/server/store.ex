@@ -39,6 +39,13 @@ defmodule Server.Store do
     {:reply, value, state}
   end
 
+  @impl GenServer
+  def handle_call(:keys, _, state) do
+    value = Map.keys(state)
+
+    {:reply, value, state}
+  end
+
   def start_link(state \\ %{}) do
     GenServer.start_link(__MODULE__, state, name: __MODULE__)
   end
@@ -53,6 +60,10 @@ defmodule Server.Store do
 
   def get(key) do
     GenServer.call(__MODULE__, {:get, key})
+  end
+
+  def keys() do
+    GenServer.call(__MODULE__, :keys)
   end
 
   defp read_rdb_file(config) do

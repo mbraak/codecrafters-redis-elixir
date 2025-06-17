@@ -61,6 +61,19 @@ defmodule Client do
     :gen_tcp.send(client_socket, response_data)
   end
 
+  defp handle_request("keys", _, client_socket) do
+    keys = Server.Store.keys()
+
+    :gen_tcp.send(
+      client_socket,
+      EncodeResp.array(
+        for key <- keys do
+          EncodeResp.bulk_string(key)
+        end
+      )
+    )
+  end
+
   defp handle_request("ping", [], client_socket) do
     :gen_tcp.send(client_socket, EncodeResp.basic_string("PONG"))
   end
