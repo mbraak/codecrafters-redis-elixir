@@ -6,7 +6,7 @@ defmodule Server do
     {options, _, _} = OptionParser.parse(args, strict: [dir: :string, dbfilename: :string])
 
     children = [
-      Server.Store,
+      {Server.Store, options},
       {Server.Config, options},
       {Task, &Server.listen/0}
     ]

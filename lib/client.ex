@@ -52,10 +52,10 @@ defmodule Client do
     value = Server.Store.get(key)
 
     response_data =
-      if is_nil(value) do
-        EncodeResp.null_bulk_string()
-      else
-        EncodeResp.bulk_string(value)
+      case value do
+        value when is_nil(value) -> EncodeResp.null_bulk_string()
+        value when is_integer(value) -> EncodeResp.integer(value)
+        value when is_binary(value) -> EncodeResp.bulk_string(value)
       end
 
     :gen_tcp.send(client_socket, response_data)

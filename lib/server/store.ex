@@ -2,8 +2,10 @@ defmodule Server.Store do
   use GenServer
 
   @impl GenServer
-  def init(_) do
-    {:ok, %{}}
+  def init(config) do
+    state = read_rdb_file(config)
+
+    {:ok, state}
   end
 
   @impl GenServer
@@ -14,7 +16,6 @@ defmodule Server.Store do
   @impl GenServer
   def handle_cast({:put_with_expiry, key, value, expiry_ms}, state) do
     expiry_timestamp = System.os_time(:millisecond) + expiry_ms
-    IO.inspect(expiry_ms)
 
     {:noreply, Map.put(state, key, {value, expiry_timestamp})}
   end
@@ -38,7 +39,7 @@ defmodule Server.Store do
     {:reply, value, state}
   end
 
-  def start_link(state \\ []) do
+  def start_link(state \\ %{}) do
     GenServer.start_link(__MODULE__, state, name: __MODULE__)
   end
 
@@ -52,5 +53,29 @@ defmodule Server.Store do
 
   def get(key) do
     GenServer.call(__MODULE__, {:get, key})
+  end
+
+  defp read_rdb_file(config) do
+    dir = config[:dir]
+    dbfilename = config[:dbfilename] || "dump.rdb"
+
+    rdb_path =
+      if dir do
+        Path.join(dir, dbfilename)
+      else
+        dbfilename
+      end
+
+    if File.exists?(rdb_path) do
+      rdb_path
+      |> ParseRdb.read()
+      |> Enum.filter(&(elem(&1, 0) == :entry))
+      |> Enum.map(fn {:entry, {key, value}} ->
+        {key, {value, nil}}
+      end)
+      |> Map.new()
+    else
+      %{}
+    end
   end
 end

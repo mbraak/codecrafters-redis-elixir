@@ -26,7 +26,7 @@ defmodule ParseRdb do
     {key, rest} = parse_value(rest)
     {value, rest} = parse_value(rest)
 
-    entry = {:entry, {key, value, []}}
+    entry = {:metadata, {key, value}}
     parse(rest, [entry | entries])
   end
 
@@ -47,7 +47,7 @@ defmodule ParseRdb do
   # Checksum
   defp parse(<<0xFF, checksum::binary-size(8)>>, entries) do
     entry = {:checksum, checksum}
-    {:lists.reverse([entry | entries]), ""}
+    [entry | entries]
   end
 
   # Short string

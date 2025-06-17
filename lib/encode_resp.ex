@@ -1,4 +1,8 @@
 defmodule EncodeResp do
+  def integer(value) do
+    ":#{value}\r\n"
+  end
+
   def basic_string(value) do
     "+#{value}\r\n"
   end
