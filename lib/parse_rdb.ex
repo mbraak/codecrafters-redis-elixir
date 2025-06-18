@@ -11,7 +11,15 @@ defmodule ParseRdb do
     {key, rest} = parse_value(rest)
     {value, rest} = parse_value(rest)
 
-    entry = {:entry, {key, value}}
+    entry = {
+      :entry,
+      %{
+        key: key,
+        value: value,
+        expiry_timestamp: nil
+      }
+    }
+
     parse(rest, [entry | entries])
   end
 
@@ -39,16 +47,24 @@ defmodule ParseRdb do
     parse(rest, [entry | entries])
   end
 
+  # Key with expiration
   defp parse(
-         <<0xFC, _expiration_time::little-unsigned-integer-size(64), _datatype::size(8),
+         <<0xFC, expiry_timestamp::little-unsigned-integer-size(64), _datatype::size(8),
            rest::binary>>,
          entries
        ) do
     {key, rest} = parse_value(rest)
     {value, rest} = parse_value(rest)
 
-    # TODO: _expiration_time
-    entry = {:entry, {key, value}}
+    entry = {
+      :entry,
+      %{
+        key: key,
+        value: value,
+        expiry_timestamp: expiry_timestamp
+      }
+    }
+
     parse(rest, [entry | entries])
   end
 

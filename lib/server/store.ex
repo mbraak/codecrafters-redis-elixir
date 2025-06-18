@@ -10,14 +10,31 @@ defmodule Server.Store do
 
   @impl GenServer
   def handle_cast({:put, key, value}, state) do
-    {:noreply, Map.put(state, key, {value, nil})}
+    {
+      :noreply,
+      Map.put(
+        state,
+        key,
+        %{value: value, expiry_timestamp: nil}
+      )
+    }
   end
 
   @impl GenServer
   def handle_cast({:put_with_expiry, key, value, expiry_ms}, state) do
     expiry_timestamp = System.os_time(:millisecond) + expiry_ms
 
-    {:noreply, Map.put(state, key, {value, expiry_timestamp})}
+    {
+      :noreply,
+      Map.put(
+        state,
+        key,
+        %{
+          value: value,
+          expiry_timestamp: expiry_timestamp
+        }
+      )
+    }
   end
 
   @impl GenServer
@@ -27,10 +44,10 @@ defmodule Server.Store do
         nil ->
           nil
 
-        {value, nil} ->
+        %{value: value, expiry_timestamp: nil} ->
           value
 
-        {value, expiry_timestamp} ->
+        %{value: value, expiry_timestamp: expiry_timestamp} ->
           if expiry_timestamp > System.os_time(:millisecond) do
             value
           end
@@ -81,8 +98,14 @@ defmodule Server.Store do
       rdb_path
       |> ParseRdb.read()
       |> Enum.filter(&(elem(&1, 0) == :entry))
-      |> Enum.map(fn {:entry, {key, value}} ->
-        {key, {value, nil}}
+      |> Enum.map(fn {:entry, %{key: key, value: value, expiry_timestamp: expiry_timestamp}} ->
+        {
+          key,
+          %{
+            value: value,
+            expiry_timestamp: expiry_timestamp
+          }
+        }
       end)
       |> Map.new()
     else
