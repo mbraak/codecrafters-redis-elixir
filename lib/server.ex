@@ -15,6 +15,7 @@ defmodule Server do
     children = [
       {Server.Store, options},
       {Server.Config, options},
+      {Server.Replica, options},
       {Task, &Server.listen/0}
     ]
 
