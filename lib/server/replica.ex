@@ -30,7 +30,5 @@ defmodule Server.Replica do
       {:error, reason} ->
         IO.puts(reason)
     end
-
-    # :gen_tcp.close(socket)
   end
 end
