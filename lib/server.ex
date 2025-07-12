@@ -5,7 +5,9 @@ defmodule Server do
     args = System.argv()
 
     {parsed_options, _, _} =
-      OptionParser.parse(args, strict: [dir: :string, dbfilename: :string, port: :string])
+      OptionParser.parse(args,
+        strict: [dir: :string, dbfilename: :string, port: :string, replicaof: :string]
+      )
 
     defaults = [port: "6379"]
     options = Keyword.merge(defaults, parsed_options)
