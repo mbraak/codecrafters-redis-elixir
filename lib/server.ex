@@ -3,7 +3,12 @@ defmodule Server do
 
   def start(_type, _args) do
     args = System.argv()
-    {options, _, _} = OptionParser.parse(args, strict: [dir: :string, dbfilename: :string])
+
+    {parsed_options, _, _} =
+      OptionParser.parse(args, strict: [dir: :string, dbfilename: :string, port: :string])
+
+    defaults = [port: "6379"]
+    options = Keyword.merge(defaults, parsed_options)
 
     children = [
       {Server.Store, options},
@@ -20,7 +25,9 @@ defmodule Server do
   def listen() do
     # Since the tester restarts your program quite often, setting SO_REUSEADDR
     # ensures that we don't run into 'Address already in use' errors
-    {:ok, socket} = :gen_tcp.listen(6379, [:binary, active: false, reuseaddr: true])
+    port = Server.Config.get("port") |> String.to_integer()
+
+    {:ok, socket} = :gen_tcp.listen(port, [:binary, active: false, reuseaddr: true])
 
     accept(socket)
   end
