@@ -6,7 +6,14 @@ defmodule Server.Replica do
     replicaof = config[:replicaof]
 
     if replicaof do
-      ping(replicaof)
+      [host, port] = parse_replicaof(replicaof)
+      listening_port = String.to_integer(config[:port])
+
+      {:ok, socket} = RedisClient.connect(host, port)
+      RedisClient.ping(socket)
+      RedisClient.repl_conf(socket, ["listening-port", Integer.to_string(listening_port)])
+      RedisClient.repl_conf(socket, ["capa", "psync2"])
+      RedisClient.close(socket)
     end
 
     {:ok, config}
@@ -16,19 +23,8 @@ defmodule Server.Replica do
     GenServer.start_link(__MODULE__, config, name: __MODULE__)
   end
 
-  defp ping(replicaof) do
-    [host, port] = String.split(replicaof, " ")
-    port_int = String.to_integer(port)
-    opts = [:binary, active: false]
-
-    case :gen_tcp.connect(to_charlist(host), port_int, opts) do
-      {:ok, socket} ->
-        :ok = :gen_tcp.send(socket, EncodeResp.array([EncodeResp.bulk_string("PING")]))
-        :gen_tcp.recv(socket, 0)
-        :gen_tcp.close(socket)
-
-      {:error, reason} ->
-        IO.puts(reason)
-    end
+  def parse_replicaof(replicaof_config) do
+    [host, port] = String.split(replicaof_config, " ")
+    [host, String.to_integer(port)]
   end
 end

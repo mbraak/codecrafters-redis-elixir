@@ -1,19 +1,33 @@
 defmodule RedisClient do
-  def ping(host, port) do
-    send(host, port, EncodeResp.array([EncodeResp.bulk_string("PING")]))
-  end
-
-  defp send(host, port, resp) do
+  def connect(host, port) do
     opts = [:binary, active: false]
 
-    case :gen_tcp.connect(to_charlist(host), port, opts) do
-      {:ok, socket} ->
-        :ok = :gen_tcp.send(socket, resp)
-        :gen_tcp.recv(socket, 0)
-        :gen_tcp.close(socket)
+    :gen_tcp.connect(to_charlist(host), port, opts)
+  end
 
-      {:error, reason} ->
-        IO.puts(reason)
-    end
+  def close(socket) do
+    :gen_tcp.close(socket)
+  end
+
+  def ping(socket) do
+    send_message(socket, EncodeResp.array([EncodeResp.bulk_string("PING")]))
+  end
+
+  def repl_conf(socket, values) do
+    request =
+      EncodeResp.array([
+        EncodeResp.bulk_string("REPLCONF")
+        | Enum.map(values, &EncodeResp.bulk_string(&1))
+      ])
+
+    send_message(
+      socket,
+      request
+    )
+  end
+
+  defp send_message(socket, resp) do
+    :ok = :gen_tcp.send(socket, resp)
+    :gen_tcp.recv(socket, 0)
   end
 end
