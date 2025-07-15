@@ -109,6 +109,15 @@ defmodule Client do
     :gen_tcp.send(client_socket, EncodeResp.basic_string("PONG"))
   end
 
+  defp handle_request("psync", ["?", "-1"], client_socket) do
+    replication_id = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
+
+    :gen_tcp.send(
+      client_socket,
+      EncodeResp.basic_string("FULLRESYNC #{replication_id} 0")
+    )
+  end
+
   defp handle_request("set", [key, value], client_socket) do
     Server.Store.put(key, value)
 
