@@ -13,6 +13,17 @@ defmodule RedisClient do
     send_message(socket, EncodeResp.array([EncodeResp.bulk_string("PING")]))
   end
 
+  def psync(socket, replication_id, offset) do
+    send_message(
+      socket,
+      EncodeResp.array([
+        EncodeResp.bulk_string("PSYNC"),
+        EncodeResp.bulk_string(replication_id),
+        EncodeResp.bulk_string(Integer.to_string(offset))
+      ])
+    )
+  end
+
   def repl_conf(socket, values) do
     request =
       EncodeResp.array([

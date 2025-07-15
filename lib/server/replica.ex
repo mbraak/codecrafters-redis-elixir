@@ -13,6 +13,7 @@ defmodule Server.Replica do
       RedisClient.ping(socket)
       RedisClient.repl_conf(socket, ["listening-port", Integer.to_string(listening_port)])
       RedisClient.repl_conf(socket, ["capa", "psync2"])
+      RedisClient.psync(socket, "?", -1)
       RedisClient.close(socket)
     end
 
