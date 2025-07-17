@@ -112,9 +112,21 @@ defmodule Client do
   defp handle_request("psync", ["?", "-1"], client_socket) do
     replication_id = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
 
+    empty_rdb_file =
+      Base.decode64!(
+        "UkVESVMwMDEx+glyZWRpcy12ZXIFNy4yLjD6CnJlZGlzLWJpdHPAQPoFY3RpbWXCbQi8ZfoIdXNlZC1tZW3CsMQQAPoIYW9mLWJhc2XAAP/wbjv+wP9aog=="
+      )
+
     :gen_tcp.send(
       client_socket,
       EncodeResp.basic_string("FULLRESYNC #{replication_id} 0")
+    )
+
+    size = :erlang.byte_size(empty_rdb_file)
+
+    :gen_tcp.send(
+      client_socket,
+      "$#{size}\r\n#{empty_rdb_file}"
     )
   end
 
