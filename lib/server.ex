@@ -2,22 +2,8 @@ defmodule Server do
   use Application
 
   def start(_type, _args) do
-    args = System.argv()
-
-    {parsed_options, _, _} =
-      OptionParser.parse(args,
-        strict: [dir: :string, dbfilename: :string, port: :string, replicaof: :string]
-      )
-
-    defaults = [port: "6379"]
-    options = Keyword.merge(defaults, parsed_options)
-
-    children = [
-      {Server.Store, options},
-      {Server.Config, options},
-      {Server.Replica, options},
-      {Task, &Server.listen/0}
-    ]
+    options = parse_options()
+    children = get_children(options)
 
     Supervisor.start_link(children, strategy: :one_for_one)
   end
@@ -40,5 +26,29 @@ defmodule Server do
     Task.start_link(fn -> Client.run(client_socket) end)
 
     accept(socket)
+  end
+
+  defp get_children(options) do
+    replica_child = if options[:replicaof], do: {Server.Replica, options}, else: nil
+
+    [
+      {Server.Store, options},
+      {Server.Config, options},
+      replica_child,
+      {Task, &Server.listen/0}
+    ]
+    |> Enum.filter(&(&1 != nil))
+  end
+
+  def parse_options do
+    args = System.argv()
+
+    {parsed_options, _, _} =
+      OptionParser.parse(args,
+        strict: [dir: :string, dbfilename: :string, port: :string, replicaof: :string]
+      )
+
+    defaults = [port: "6379"]
+    Keyword.merge(defaults, parsed_options)
   end
 end
