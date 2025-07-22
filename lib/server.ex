@@ -29,11 +29,17 @@ defmodule Server do
   end
 
   defp get_children(options) do
-    replica_child = if options[:replicaof], do: {Server.Replica, options}, else: nil
+    replica_child =
+      if options[:replicaof] do
+        {Server.ReplicaClient, options}
+      else
+        nil
+      end
 
     [
       {Server.Store, options},
       {Server.Config, options},
+      {Server.ReplicaServer, nil},
       replica_child,
       {Task, &Server.listen/0}
     ]

@@ -4,33 +4,37 @@ defmodule Client do
   end
 
   defp run_loop(client_socket) do
-    case :gen_tcp.recv(client_socket, 0) do
-      {:ok, data} ->
-        try do
-          handle_request(
-            ParseResp.parse(data),
-            client_socket
-          )
-        rescue
-          _ -> :gen_tcp.close(client_socket)
-        end
+    must_continue =
+      case :gen_tcp.recv(client_socket, 0) do
+        {:ok, data} ->
+          try do
+            handle_request(data, client_socket)
+          rescue
+            _ ->
+              :gen_tcp.close(client_socket)
+              false
+          end
 
-      {:error, :closed} ->
-        nil
+        {:error, _} ->
+          false
+      end
 
-      {:error, :enotconn} ->
-        nil
+    if must_continue do
+      run_loop(client_socket)
     end
-
-    run_loop(client_socket)
   end
 
-  defp handle_request([command | tail], client_socket) do
-    handle_request(
-      String.downcase(command),
-      tail,
-      client_socket
-    )
+  defp handle_request(data, client_socket) do
+    [command | tail] = ParseResp.parse(data)
+    command_downcase = String.downcase(command)
+
+    result = handle_request(command_downcase, tail, client_socket)
+
+    if command_downcase == "set" do
+      Server.ReplicaServer.replicate(data)
+    end
+
+    result
   end
 
   defp handle_request("config", [config_command, key], client_socket) do
@@ -39,6 +43,8 @@ defmodule Client do
       key,
       client_socket
     )
+
+    true
   end
 
   defp handle_request("echo", [value], client_socket) do
@@ -46,6 +52,8 @@ defmodule Client do
       client_socket,
       EncodeResp.bulk_string(value)
     )
+
+    true
   end
 
   defp handle_request("get", [key], client_socket) do
@@ -59,6 +67,7 @@ defmodule Client do
       end
 
     :gen_tcp.send(client_socket, response_data)
+    true
   end
 
   defp handle_request("info", ["replication"], client_socket) do
@@ -90,6 +99,8 @@ defmodule Client do
       client_socket,
       EncodeResp.bulk_string(info)
     )
+
+    true
   end
 
   defp handle_request("keys", _, client_socket) do
@@ -103,10 +114,13 @@ defmodule Client do
         end
       )
     )
+
+    true
   end
 
   defp handle_request("ping", [], client_socket) do
     :gen_tcp.send(client_socket, EncodeResp.basic_string("PONG"))
+    true
   end
 
   defp handle_request("psync", ["?", "-1"], client_socket) do
@@ -128,6 +142,10 @@ defmodule Client do
       client_socket,
       "$#{size}\r\n#{empty_rdb_file}"
     )
+
+    Server.ReplicaServer.add_replica(client_socket)
+
+    false
   end
 
   defp handle_request("set", [key, value], client_socket) do
@@ -137,6 +155,8 @@ defmodule Client do
       client_socket,
       EncodeResp.basic_string("OK")
     )
+
+    true
   end
 
   defp handle_request("replconf", _values, client_socket) do
@@ -144,6 +164,8 @@ defmodule Client do
       client_socket,
       EncodeResp.basic_string("OK")
     )
+
+    true
   end
 
   defp handle_request("set", [key, value, "px", expiry_ms_string], client_socket) do
@@ -154,6 +176,8 @@ defmodule Client do
       client_socket,
       EncodeResp.basic_string("OK")
     )
+
+    true
   end
 
   defp hand_config_command("get", key, client_socket) do
@@ -170,5 +194,6 @@ defmodule Client do
       end
 
     :gen_tcp.send(client_socket, message)
+    true
   end
 end
