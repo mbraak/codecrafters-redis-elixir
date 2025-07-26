@@ -2,18 +2,30 @@ defmodule ParseRespTest do
   use ExUnit.Case, async: true
 
   test "parse basic string" do
-    assert ParseResp.parse("+test\r\n") == "test"
+    assert ParseResp.parse("+test\r\n") == {"test", ""}
   end
 
   test "parse bulk string" do
-    assert ParseResp.parse("$3\r\nabc\r\n") == "abc"
+    assert ParseResp.parse("$3\r\nabc\r\n") == {"abc", ""}
   end
 
   test "parse array with one bulk string" do
-    assert ParseResp.parse("*1\r\n$4\r\nPING\r\n") == ["PING"]
+    assert ParseResp.parse("*1\r\n$4\r\nPING\r\n") == {["PING"], ""}
   end
 
   test "parse array with two bulk strings" do
-    assert ParseResp.parse("*2\r\n$4\r\nECHO\r\n$3\r\nhey\r\n") == ["ECHO", "hey"]
+    assert ParseResp.parse("*2\r\n$4\r\nECHO\r\n$3\r\nhey\r\n") == {["ECHO", "hey"], ""}
+  end
+
+  test "returns the rest of the input" do
+    {result, rest} =
+      ParseResp.parse(
+        "*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\n123\r\n*3\r\n$3\r\nSET\r\n$3\r\nbar\r\n$3\r\n456\r\n*3\r\n$3\r\nSET\r\n$3\r\nbaz\r\n$3\r\n789\r\n"
+      )
+
+    assert result == ["SET", "foo", "123"]
+
+    assert rest ==
+             "*3\r\n$3\r\nSET\r\n$3\r\nbar\r\n$3\r\n456\r\n*3\r\n$3\r\nSET\r\n$3\r\nbaz\r\n$3\r\n789"
   end
 end

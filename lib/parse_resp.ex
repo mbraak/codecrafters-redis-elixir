@@ -3,8 +3,8 @@ defmodule ParseResp do
   def parse(nil), do: nil
 
   def parse(value) when is_binary(value) do
-    {result, _} = value |> String.trim_trailing() |> String.split("\r\n") |> parse_lines
-    result
+    {result, rest_lines} = value |> String.trim_trailing() |> String.split("\r\n") |> parse_lines
+    {result, Enum.join(rest_lines, "\r\n")}
   end
 
   defp parse_lines([line | rest_lines]) do

@@ -24,8 +24,12 @@ defmodule Client do
     end
   end
 
-  defp handle_request(data, client_socket) do
-    [command | tail] = ParseResp.parse(data)
+  def handle_request(data, client_socket) do
+    {parsed_data, _rest} = ParseResp.parse(data)
+
+    # todo: handle rest
+
+    [command | tail] = parsed_data
     command_downcase = String.downcase(command)
 
     result = handle_request(command_downcase, tail, client_socket)
