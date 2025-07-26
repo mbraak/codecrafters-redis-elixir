@@ -15,9 +15,14 @@ defmodule Server.ReplicaClient do
     RedisClient.repl_conf(socket, ["capa", "psync2"])
     RedisClient.psync(socket, "?", -1)
 
-    {:ok, _rdb} = :gen_tcp.recv(socket, 0)
+    {:ok, data} = :gen_tcp.recv(socket, 0)
+    rest = parse_rdb(data) |> String.trim_leading()
 
-    run_loop(socket)
+    if String.length(rest) > 0 do
+      Client.handle_request(rest, socket)
+    end
+
+    Client.run(socket)
   end
 
   defp parse_replicaof(replicaof_config) do
@@ -25,18 +30,12 @@ defmodule Server.ReplicaClient do
     [host, String.to_integer(port)]
   end
 
-  defp run_loop(socket) do
-    must_continue =
-      case :gen_tcp.recv(socket, 0) do
-        {:ok, _data} ->
-          true
+  defp parse_rdb(data) do
+    [first_line, rest] = String.split(data, "\r\n", parts: 2)
 
-        {:error, _e} ->
-          false
-      end
+    rdb_size = String.slice(first_line, 1..String.length(first_line)) |> String.to_integer()
+    rest_size = :erlang.byte_size(rest)
 
-    if must_continue do
-      run_loop(socket)
-    end
+    :erlang.binary_part(rest, rdb_size, rest_size - rdb_size)
   end
 end
