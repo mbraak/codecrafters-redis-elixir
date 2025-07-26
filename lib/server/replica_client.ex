@@ -19,6 +19,8 @@ defmodule Server.ReplicaClient do
     rest = parse_rdb(data) |> String.trim_leading()
 
     if String.length(rest) > 0 do
+      IO.inspect("ReplicaClient rest")
+      IO.inspect(rest)
       Client.handle_request(rest, socket)
     end
 

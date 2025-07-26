@@ -25,23 +25,27 @@ defmodule Client do
   end
 
   def handle_request(data, client_socket) do
-    {parsed_data, _rest} = ParseResp.parse(data)
+    {parsed_data, rest} = ParseResp.parse(data)
 
-    # todo: handle rest
+    result = handle_parsed_data(parsed_data, client_socket)
 
+    if rest == "" do
+      result
+    else
+      handle_request(rest, client_socket)
+    end
+  end
+
+  defp handle_parsed_data(parsed_data, client_socket) do
     [command | tail] = parsed_data
     command_downcase = String.downcase(command)
 
-    handle_request(command_downcase, tail, client_socket)
-
-    if command_downcase == "set" do
-      Server.ReplicaServer.replicate(data)
-    end
+    handle_command(command_downcase, tail, client_socket)
 
     command_downcase != "psync"
   end
 
-  defp handle_request("config", [config_command, key], client_socket) do
+  defp handle_command("config", [config_command, key], client_socket) do
     hand_config_command(
       String.downcase(config_command),
       key,
@@ -49,27 +53,21 @@ defmodule Client do
     )
   end
 
-  defp handle_request("echo", [value], client_socket) do
+  defp handle_command("echo", [value], client_socket) do
     :gen_tcp.send(
       client_socket,
       EncodeResp.bulk_string(value)
     )
   end
 
-  defp handle_request("get", [key], client_socket) do
+  defp handle_command("get", [key], client_socket) do
     value = Server.Store.get(key)
-
-    response_data =
-      case value do
-        value when is_nil(value) -> EncodeResp.null_bulk_string()
-        value when is_integer(value) -> EncodeResp.integer(value)
-        value when is_binary(value) -> EncodeResp.bulk_string(value)
-      end
+    response_data = EncodeResp.encode_value(value)
 
     :gen_tcp.send(client_socket, response_data)
   end
 
-  defp handle_request("info", ["replication"], client_socket) do
+  defp handle_command("info", ["replication"], client_socket) do
     replicaof = Server.Config.get("replicaof")
 
     role =
@@ -100,7 +98,7 @@ defmodule Client do
     )
   end
 
-  defp handle_request("keys", _, client_socket) do
+  defp handle_command("keys", _, client_socket) do
     keys = Server.Store.keys()
 
     :gen_tcp.send(
@@ -113,11 +111,11 @@ defmodule Client do
     )
   end
 
-  defp handle_request("ping", [], client_socket) do
+  defp handle_command("ping", [], client_socket) do
     :gen_tcp.send(client_socket, EncodeResp.basic_string("PONG"))
   end
 
-  defp handle_request("psync", ["?", "-1"], client_socket) do
+  defp handle_command("psync", ["?", "-1"], client_socket) do
     replication_id = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
 
     empty_rdb_file =
@@ -140,23 +138,31 @@ defmodule Client do
     Server.ReplicaServer.add_replica(client_socket)
   end
 
-  defp handle_request("set", [key, value], client_socket) do
+  defp handle_command("set", [key, value], client_socket) do
     Server.Store.put(key, value)
 
     :gen_tcp.send(
       client_socket,
       EncodeResp.basic_string("OK")
     )
+
+    Server.ReplicaServer.replicate(
+      EncodeResp.array([
+        EncodeResp.bulk_string("set"),
+        EncodeResp.bulk_string(key),
+        EncodeResp.encode_value(value)
+      ])
+    )
   end
 
-  defp handle_request("replconf", _values, client_socket) do
+  defp handle_command("replconf", _values, client_socket) do
     :gen_tcp.send(
       client_socket,
       EncodeResp.basic_string("OK")
     )
   end
 
-  defp handle_request("set", [key, value, "px", expiry_ms_string], client_socket) do
+  defp handle_command("set", [key, value, "px", expiry_ms_string], client_socket) do
     expiry_ms = String.to_integer(expiry_ms_string)
     Server.Store.put_with_expiry(key, value, expiry_ms)
 
