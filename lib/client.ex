@@ -32,13 +32,13 @@ defmodule Client do
     [command | tail] = parsed_data
     command_downcase = String.downcase(command)
 
-    result = handle_request(command_downcase, tail, client_socket)
+    handle_request(command_downcase, tail, client_socket)
 
     if command_downcase == "set" do
       Server.ReplicaServer.replicate(data)
     end
 
-    result
+    command_downcase != "psync"
   end
 
   defp handle_request("config", [config_command, key], client_socket) do
@@ -47,8 +47,6 @@ defmodule Client do
       key,
       client_socket
     )
-
-    true
   end
 
   defp handle_request("echo", [value], client_socket) do
@@ -56,8 +54,6 @@ defmodule Client do
       client_socket,
       EncodeResp.bulk_string(value)
     )
-
-    true
   end
 
   defp handle_request("get", [key], client_socket) do
@@ -71,7 +67,6 @@ defmodule Client do
       end
 
     :gen_tcp.send(client_socket, response_data)
-    true
   end
 
   defp handle_request("info", ["replication"], client_socket) do
@@ -103,8 +98,6 @@ defmodule Client do
       client_socket,
       EncodeResp.bulk_string(info)
     )
-
-    true
   end
 
   defp handle_request("keys", _, client_socket) do
@@ -118,13 +111,10 @@ defmodule Client do
         end
       )
     )
-
-    true
   end
 
   defp handle_request("ping", [], client_socket) do
     :gen_tcp.send(client_socket, EncodeResp.basic_string("PONG"))
-    true
   end
 
   defp handle_request("psync", ["?", "-1"], client_socket) do
@@ -148,8 +138,6 @@ defmodule Client do
     )
 
     Server.ReplicaServer.add_replica(client_socket)
-
-    false
   end
 
   defp handle_request("set", [key, value], client_socket) do
@@ -159,8 +147,6 @@ defmodule Client do
       client_socket,
       EncodeResp.basic_string("OK")
     )
-
-    true
   end
 
   defp handle_request("replconf", _values, client_socket) do
@@ -168,8 +154,6 @@ defmodule Client do
       client_socket,
       EncodeResp.basic_string("OK")
     )
-
-    true
   end
 
   defp handle_request("set", [key, value, "px", expiry_ms_string], client_socket) do
@@ -180,8 +164,6 @@ defmodule Client do
       client_socket,
       EncodeResp.basic_string("OK")
     )
-
-    true
   end
 
   defp hand_config_command("get", key, client_socket) do
@@ -198,6 +180,5 @@ defmodule Client do
       end
 
     :gen_tcp.send(client_socket, message)
-    true
   end
 end
