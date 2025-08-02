@@ -19,12 +19,10 @@ defmodule Server.ReplicaClient do
     rest = parse_rdb(data) |> String.trim_leading()
 
     if String.length(rest) > 0 do
-      IO.inspect("ReplicaClient rest")
-      IO.inspect(rest)
-      Client.handle_request(rest, socket)
+      handle_request(rest, socket)
     end
 
-    Client.run(socket)
+    run_loop(socket)
   end
 
   defp parse_replicaof(replicaof_config) do
@@ -39,5 +37,61 @@ defmodule Server.ReplicaClient do
     rest_size = :erlang.byte_size(rest)
 
     :erlang.binary_part(rest, rdb_size, rest_size - rdb_size)
+  end
+
+  defp run_loop(client_socket) do
+    must_continue =
+      case :gen_tcp.recv(client_socket, 0) do
+        {:ok, data} ->
+          try do
+            handle_request(data, client_socket)
+            true
+          rescue
+            _ ->
+              :gen_tcp.close(client_socket)
+              false
+          end
+
+        {:error, _} ->
+          false
+      end
+
+    if must_continue do
+      run_loop(client_socket)
+    end
+  end
+
+  defp handle_request(data, client_socket) do
+    {parsed_data, rest} = ParseResp.parse(data)
+
+    result = handle_parsed_data(parsed_data, client_socket)
+
+    if rest == "" do
+      result
+    else
+      handle_request(rest, client_socket)
+    end
+  end
+
+  defp handle_parsed_data(parsed_data, client_socket) do
+    [command | tail] = parsed_data
+    command_downcase = String.downcase(command)
+
+    handle_command(command_downcase, tail, client_socket)
+  end
+
+  defp handle_command("set", [key, value], _client_socket) do
+    Server.Store.put(key, value)
+  end
+
+  defp handle_command("replconf", ["GETACK", "*"], client_socket) do
+    :gen_tcp.send(
+      client_socket,
+      EncodeResp.array([
+        EncodeResp.bulk_string("REPLCONF"),
+        EncodeResp.bulk_string("ACK"),
+        EncodeResp.bulk_string("0")
+      ])
+    )
   end
 end

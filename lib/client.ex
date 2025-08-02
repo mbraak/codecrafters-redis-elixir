@@ -24,7 +24,7 @@ defmodule Client do
     end
   end
 
-  def handle_request(data, client_socket) do
+  defp handle_request(data, client_socket) do
     {parsed_data, rest} = ParseResp.parse(data)
 
     result = handle_parsed_data(parsed_data, client_socket)
@@ -151,6 +151,17 @@ defmodule Client do
         EncodeResp.bulk_string("set"),
         EncodeResp.bulk_string(key),
         EncodeResp.encode_value(value)
+      ])
+    )
+  end
+
+  defp handle_command("replconf", ["GETACK", "*"], client_socket) do
+    :gen_tcp.send(
+      client_socket,
+      EncodeResp.array([
+        EncodeResp.bulk_string("REPLCONF"),
+        EncodeResp.bulk_string("ACK"),
+        EncodeResp.bulk_string("0")
       ])
     )
   end
