@@ -6,37 +6,47 @@ defmodule Server.ReplicaClient do
   end
 
   def run(config) do
-    [host, port] = parse_replicaof(config[:replicaof])
-    listening_port = String.to_integer(config[:port])
+    socket = connect(config)
+    request = receive_rdb(socket)
 
-    {:ok, socket} = RedisClient.connect(host, port)
-    RedisClient.ping(socket)
-    RedisClient.repl_conf(socket, ["listening-port", Integer.to_string(listening_port)])
-    RedisClient.repl_conf(socket, ["capa", "psync2"])
-    RedisClient.psync(socket, "?", -1)
-
-    {:ok, data} = :gen_tcp.recv(socket, 0)
-    rest = parse_rdb(data) |> String.trim_leading()
-
-    if String.length(rest) > 0 do
-      handle_request(rest, socket)
+    if String.length(request ) > 0 do
+      handle_request(request , socket)
     end
 
     run_loop(socket)
   end
 
-  defp parse_replicaof(replicaof_config) do
+  defp connect(config) do
+     [host, port] = parse_replicaof_config(config[:replicaof])
+    listening_port = String.to_integer(config[:port])
+
+    {:ok, socket} = RedisClient.connect(host, port)
+
+    RedisClient.ping(socket)
+    RedisClient.repl_conf(socket, ["listening-port", Integer.to_string(listening_port)])
+    RedisClient.repl_conf(socket, ["capa", "psync2"])
+    RedisClient.psync(socket, "?", -1)
+
+    socket
+  end
+
+  defp parse_replicaof_config(replicaof_config) do
     [host, port] = String.split(replicaof_config, " ")
     [host, String.to_integer(port)]
   end
 
+  defp receive_rdb(socket) do
+    {:ok, data} = :gen_tcp.recv(socket, 0)
+    parse_rdb(data) |> String.trim_leading()
+  end
+
   defp parse_rdb(data) do
-    [first_line, rest] = String.split(data, "\r\n", parts: 2)
+    [first_line, data] = String.split(data, "\r\n", parts: 2)
 
     rdb_size = String.slice(first_line, 1..String.length(first_line)) |> String.to_integer()
-    rest_size = :erlang.byte_size(rest)
+    rest_size = :erlang.byte_size(data)
 
-    :erlang.binary_part(rest, rdb_size, rest_size - rdb_size)
+    :erlang.binary_part(data, rdb_size, rest_size - rdb_size)
   end
 
   defp run_loop(client_socket) do
@@ -82,6 +92,9 @@ defmodule Server.ReplicaClient do
 
   defp handle_command("set", [key, value], _client_socket) do
     Server.Store.put(key, value)
+  end
+
+  defp handle_command("ping", [], _client_socket) do
   end
 
   defp handle_command("replconf", ["GETACK", "*"], client_socket) do
