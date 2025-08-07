@@ -166,6 +166,13 @@ defmodule Client do
     )
   end
 
+  defp handle_command("wait", _values, client_socket) do
+    :gen_tcp.send(
+      client_socket,
+      EncodeResp.integer(0)
+    )
+  end
+
   defp hand_config_command("get", key, client_socket) do
     value = Server.Config.get(key)
 
