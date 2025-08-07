@@ -1,21 +1,17 @@
 defmodule RedisClient do
   def connect(host, port) do
     opts = [:binary, active: false]
-
-    :gen_tcp.connect(to_charlist(host), port, opts)
+    {:ok, socket} = :gen_tcp.connect(to_charlist(host), port, opts)
+    RespSocket.new(socket)
   end
 
-  def close(socket) do
-    :gen_tcp.close(socket)
+  def ping(resp_socket) do
+    send_message(resp_socket, EncodeResp.array([EncodeResp.bulk_string("PING")]))
   end
 
-  def ping(socket) do
-    send_message(socket, EncodeResp.array([EncodeResp.bulk_string("PING")]))
-  end
-
-  def psync(socket, replication_id, offset) do
+  def psync(resp_socket, replication_id, offset) do
     send_message(
-      socket,
+      resp_socket,
       EncodeResp.array([
         EncodeResp.bulk_string("PSYNC"),
         EncodeResp.bulk_string(replication_id),
@@ -24,21 +20,19 @@ defmodule RedisClient do
     )
   end
 
-  def repl_conf(socket, values) do
+  def repl_conf(resp_socket, values) do
     request =
       EncodeResp.array([
         EncodeResp.bulk_string("REPLCONF")
         | Enum.map(values, &EncodeResp.bulk_string(&1))
       ])
 
-    send_message(
-      socket,
-      request
-    )
+    send_message(resp_socket, request)
   end
 
-  defp send_message(socket, resp) do
-    :ok = :gen_tcp.send(socket, resp)
-    :gen_tcp.recv(socket, 0)
+  defp send_message(resp_socket, resp_data) do
+    :ok = :gen_tcp.send(resp_socket.socket, resp_data)
+    {:ok, resp_socket, parsed_data, _request_size} = RespSocket.read(resp_socket)
+    {:ok, resp_socket, parsed_data}
   end
 end

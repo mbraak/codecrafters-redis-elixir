@@ -1,49 +1,47 @@
 defmodule ParseResp do
-  def parse(""), do: nil
-  def parse(nil), do: nil
+  def parse(""), do: {"", 0, ""}
+  def parse(nil), do: {"", 0, ""}
 
-  def parse(value) when is_binary(value) do
-    {result, rest_lines} = value |> String.trim_trailing() |> String.split("\r\n") |> parse_lines
-    {result, Enum.join(rest_lines, "\r\n")}
-  end
+  # Basic string
+  def parse(<<"+", buffer::binary>>) do
+    [value, rest] = String.split(buffer, "\r\n", parts: 2)
 
-  defp parse_lines([line | rest_lines]) do
-    {first_char, rest_first_line} = String.split_at(line, 1)
+    request_size = String.length(value) + 3
 
-    parse_lines(first_char, rest_first_line, rest_lines)
-  end
-
-  # Simple string
-  defp parse_lines("+", rest_first_line, rest_lines) do
-    {rest_first_line, rest_lines}
+    {value, request_size, rest}
   end
 
   # Bulk string
-  defp parse_lines("$", _rest_first_line, rest_lines) do
-    [result | result_rest_lines] = rest_lines
-    {result, result_rest_lines}
+  def parse(<<"$", buffer::binary>>) do
+    [length_string, value, buffer] = String.split(buffer, "\r\n", parts: 3)
+
+    request_size = String.length(length_string) + String.length(value) + 5
+
+    {value, request_size, buffer}
   end
 
   # Array
-  defp parse_lines("*", rest_first_line, rest_lines) do
-    count = String.to_integer(rest_first_line)
+  def parse(<<"*", buffer::binary>>) do
+    [count_string, buffer] = String.split(buffer, "\r\n", parts: 2)
 
-    {result, rest_lines} = parse_array(count, [], rest_lines)
+    request_size = String.length(count_string) + 3
+    count = String.to_integer(count_string)
 
-    {Enum.reverse(result), rest_lines}
+    parse_array(count, [], buffer, request_size)
   end
 
-  defp parse_array(0, result_array, lines) do
-    {result_array, lines}
+  defp parse_array(0, result, buffer, total_request_size) do
+    {Enum.reverse(result), total_request_size, buffer}
   end
 
-  defp parse_array(count, result_array, lines) do
-    {value, lines} = parse_lines(lines)
+  defp parse_array(count, result, buffer, total_request_size) do
+    {value, request_size, buffer} = parse(buffer)
 
     parse_array(
       count - 1,
-      [value | result_array],
-      lines
+      [value | result],
+      buffer,
+      total_request_size + request_size
     )
   end
 end

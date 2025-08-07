@@ -1,42 +1,25 @@
 defmodule Client do
   def run(client_socket) do
-    run_loop(client_socket)
+    run_loop(RespSocket.new(client_socket))
   end
 
-  defp run_loop(client_socket) do
-    must_continue =
-      case :gen_tcp.recv(client_socket, 0) do
-        {:ok, data} ->
-          try do
-            handle_request(data, client_socket)
-          rescue
-            _ ->
-              :gen_tcp.close(client_socket)
-              false
-          end
+  defp run_loop(resp_socket) do
+    resp_socket =
+      case RespSocket.read(resp_socket) do
+        {:ok, resp_socket, parsed_data, _} ->
+          handle_parsed_data(parsed_data, resp_socket.socket)
+          resp_socket
 
         {:error, _} ->
-          false
+          nil
       end
 
-    if must_continue do
-      run_loop(client_socket)
+    if resp_socket do
+      run_loop(resp_socket)
     end
   end
 
-  defp handle_request(data, client_socket) do
-    {parsed_data, rest} = ParseResp.parse(data)
-
-    result = handle_parsed_data(parsed_data, client_socket)
-
-    if rest == "" do
-      result
-    else
-      handle_request(rest, client_socket)
-    end
-  end
-
-  defp handle_parsed_data(parsed_data, client_socket) do
+  defp handle_parsed_data(parsed_data, client_socket) when is_list(parsed_data) do
     [command | tail] = parsed_data
     command_downcase = String.downcase(command)
 
