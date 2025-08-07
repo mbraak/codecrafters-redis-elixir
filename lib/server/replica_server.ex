@@ -7,6 +7,13 @@ defmodule Server.ReplicaServer do
   end
 
   @impl GenServer
+  def handle_call(:count, _, state) do
+    count = Enum.count(state)
+
+    {:reply, count, state}
+  end
+
+  @impl GenServer
   def handle_cast({:add_replica, socket}, state) do
     {
       :noreply,
@@ -35,6 +42,10 @@ defmodule Server.ReplicaServer do
 
   def add_replica(socket) do
     GenServer.cast(__MODULE__, {:add_replica, socket})
+  end
+
+  def count do
+    GenServer.call(__MODULE__, :count)
   end
 
   def replicate(data) do

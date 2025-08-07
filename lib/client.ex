@@ -167,9 +167,11 @@ defmodule Client do
   end
 
   defp handle_command("wait", _values, client_socket) do
+    count = Server.ReplicaServer.count()
+
     :gen_tcp.send(
       client_socket,
-      EncodeResp.integer(0)
+      EncodeResp.integer(count)
     )
   end
 
