@@ -7,22 +7,22 @@ defmodule RespSocket do
     %Socket{buffer: "", socket: socket}
   end
 
-  def read(resp_socket) do
-    case read_buffer(resp_socket) do
+  def read(%Socket{} = socket) do
+    case read_buffer(socket) do
       {:ok, buffer} ->
         {parsed_data, request_size, buffer} = ParseResp.parse(buffer)
 
-        resp_socket = %Socket{resp_socket | buffer: buffer}
+        socket = %Socket{socket | buffer: buffer}
 
-        {:ok, resp_socket, parsed_data, request_size}
+        {:ok, socket, parsed_data, request_size}
 
       {:error, reason} ->
         {:error, reason}
     end
   end
 
-  def read_rdb(resp_socket) do
-    {:ok, data} = read_buffer(resp_socket)
+  def read_rdb(%Socket{} = socket) do
+    {:ok, data} = read_buffer(socket)
 
     [first_line, data] = String.split(data, "\r\n", parts: 2)
 
@@ -31,20 +31,20 @@ defmodule RespSocket do
 
     buffer = :erlang.binary_part(data, rdb_size, data_size - rdb_size)
 
-    %Socket{resp_socket | buffer: buffer}
+    %Socket{socket | buffer: buffer}
   end
 
-  def close(resp_socket) do
-    :gen_tcp.close(resp_socket.socket)
+  def close(%Socket{} = socket) do
+    :gen_tcp.close(socket.socket)
 
-    %Socket{resp_socket | buffer: ""}
+    %Socket{socket | buffer: ""}
   end
 
-  defp read_buffer(resp_socket) do
-    if byte_size(resp_socket.buffer) == 0 do
-      :gen_tcp.recv(resp_socket.socket, 0)
+  defp read_buffer(%Socket{} = socket) do
+    if byte_size(socket.buffer) == 0 do
+      :gen_tcp.recv(socket.socket, 0)
     else
-      {:ok, resp_socket.buffer}
+      {:ok, socket.buffer}
     end
   end
 end

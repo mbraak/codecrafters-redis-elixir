@@ -43,7 +43,7 @@ defmodule Server.ReplicaClient do
     [host, String.to_integer(port)]
   end
 
-  defp run_loop(state) do
+  defp run_loop(%State{} = state) do
     state =
       case RespSocket.read(state.resp_socket) do
         {:ok, resp_socket, parsed_data, request_size} ->
